@@ -40,9 +40,8 @@ class BeyazElmaProvider : MainAPI() {
         val title = document.selectFirst("h1")?.text()?.trim() ?: "Canlı Kanal"
         val poster = document.selectFirst("img[alt='$title']")?.attr("src")?.let { fixUrl(it) }
 
-        return newLiveStreamLoadResponse(title, url, TvType.Live) {
+        return newLiveStreamLoadResponse(title, url, url) {
             this.posterUrl = poster
-            this.dataUrl = url
         }
     }
 
