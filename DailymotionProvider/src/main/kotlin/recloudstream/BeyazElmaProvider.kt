@@ -1,4 +1,4 @@
-package com.recloudstream
+package recloudstream
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
@@ -23,18 +23,14 @@ class BeyazElmaProvider : MainAPI() {
 
             if (title.isNotBlank()) {
                 homeItems.add(
-                    LiveSearchResponse(
-                        name = title,
-                        url = href,
-                        apiName = this@BeyazElmaProvider.name,
-                        type = TvType.Live,
-                        posterUrl = poster
-                    )
+                    newLiveSearchResponse(title, href, TvType.Live) {
+                        this.posterUrl = poster
+                    }
                 )
             }
         }
 
-        return HomePageResponse(
+        return newHomePageResponse(
             listOf(HomePageList("Canlı Kanallar", homeItems.distinctBy { it.url }))
         )
     }
@@ -44,13 +40,10 @@ class BeyazElmaProvider : MainAPI() {
         val title = document.selectFirst("h1")?.text()?.trim() ?: "Canlı Kanal"
         val poster = document.selectFirst("img[alt='$title']")?.attr("src")?.let { fixUrl(it) }
 
-        return LiveStreamLoadResponse(
-            name = title,
-            url = url,
-            apiName = this.name,
-            dataUrl = url,
-            posterUrl = poster
-        )
+        return newLiveStreamLoadResponse(title, url, TvType.Live) {
+            this.posterUrl = poster
+            this.dataUrl = url
+        }
     }
 
     override suspend fun loadLinks(
@@ -85,19 +78,19 @@ class BeyazElmaProvider : MainAPI() {
         val finalStreamUrl = fixUrl(streamPath)
 
         callback.invoke(
-            ExtractorLink(
+            newExtractorLink(
                 source = this.name,
                 name = "${this.name} Canlı",
                 url = finalStreamUrl,
-                referer = embedUrl,
-                quality = Qualities.Unknown.value,
-                isM3u8 = true,
-                headers = mapOf(
+                type = ExtractorLinkType.M3U8
+            ) {
+                this.referer = embedUrl
+                this.headers = mapOf(
                     "Referer" to embedUrl,
                     "Origin" to mainUrl,
                     "User-Agent" to userAgent
                 )
-            )
+            }
         )
 
         return true
