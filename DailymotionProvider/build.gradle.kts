@@ -1,11 +1,9 @@
 // Use an integer for version numbers
-version = 4
+version = 1
 
 cloudstream {
-    // All of these properties are optional, you can safely remove any of them.
-
-    description = "Watch content from Dailymotion"
-    authors = listOf("Luna712")
+    description = "BeyazElma Canlı Yayın ve TV Eklentisi"
+    authors = listOf("SafakStream")
 
     /**
      * Status int as one of the following:
@@ -14,10 +12,10 @@ cloudstream {
      * 2: Slow
      * 3: Beta-only
      */
-    status = 1 // Will be 3 if unspecified
+    status = 1
 
-    tvTypes = listOf("Others")
-    iconUrl = "https://www.google.com/s2/favicons?domain=www.dailymotion.com&sz=%size%"
+    tvTypes = listOf("Live")
+    iconUrl = "https://beyazelma78.com/favicon.png"
 
     isCrossPlatform = true
 }
