@@ -2,7 +2,6 @@
 version = 5
 
 cloudstream {
-    name = "BeyazElma"
     description = "BeyazElma Canlı Yayın ve TV Eklentisi"
     authors = listOf("SafakStream")
 
