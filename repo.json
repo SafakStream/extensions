@@ -1,8 +1,9 @@
 {
-    "name": "SafakStream",
-    "description": "SafakStream Eklentileri",
-    "manifestVersion": 1,
-    "pluginLists": [
-        "https://raw.githubusercontent.com/SafakStream/extensions/builds/plugins.json"
-    ]
+  "name": "SafakStream",
+  "description": "SafakStream Eklentileri",
+  "manifestVersion": 1,
+  "url": "https://github.com/SafakStream/extensions",
+  "pluginLists": [
+    "https://raw.githubusercontent.com/SafakStream/extensions/builds/plugins.json"
+  ]
 }
