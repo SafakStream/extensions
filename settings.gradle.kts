@@ -1,4 +1,5 @@
 rootProject.name = "CloudstreamPlugins"
 
-// Sadece düzenlediğimiz klasörü derlemeye dahil ediyoruz
+// Düzenlediğimiz klasörleri derlemeye dahil ediyoruz
 include("DailymotionProvider")
+include("SinewixProvider")
