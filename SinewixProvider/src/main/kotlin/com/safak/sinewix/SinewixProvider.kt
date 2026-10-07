@@ -57,13 +57,13 @@ class SinewixProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val url = "$mainUrl/public/api/search/$query/$apiToken"
-        val response = app.get(url, headers = sineHeaders).parsedSafe<SinewixResponse>()
+    val url = "$mainUrl/public/api/search/$query/$apiToken"
+    val response = app.get(url, headers = sineHeaders).parsedSafe<SinewixResponse>()
 
-        return response?.searchResponse
-            ?.mapNotNull { it.toSearchResponse(null) }
-            ?: emptyList()
-    }
+    // API "search" alanına sonuçları koyuyor
+    val items = response?.searchResponse ?: response?.data ?: emptyList()
+    return items.mapNotNull { it.toSearchResponse(null) }
+}
 
     override suspend fun load(url: String): LoadResponse? {
         val data = app.get(url, headers = sineHeaders).parsedSafe<SinewixItem>() ?: return null
