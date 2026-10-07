@@ -23,11 +23,11 @@
     },
     {
         "iconUrl": "https://sinewix.com/favicon.png",
-        "jarFileSize": 87071,
-        "fileHash": "sha256-67e399087a249214a57cff0515a8448f63649ce90227a18c7ef47d9cf54789a7",
+        "jarFileSize": 87069,
+        "fileHash": "sha256-e7ac163d0c23782f24dbb162889de5f031928b7162ba5f98ec70143cd9dbb884",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/SafakStream/extensions",
-        "fileSize": 22547,
+        "fileSize": 22492,
         "status": 1,
         "authors": [
             "SafakStream"
@@ -45,6 +45,6 @@
         "description": "Sinewix i\u00e7erik sa\u011flay\u0131c\u0131s\u0131 - film, dizi, anime ve daha fazlas\u0131",
         "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/SinewixProvider.cs3",
         "name": "SinewixProvider",
-        "jarHash": "sha256-38242baff6bf04de735741d7eae4514e661eae248a900970d94aed90177ddcca"
+        "jarHash": "sha256-88d1739fe36f473b8ce4d7cee3b82e79f58ff263dc1bea3a5b2ac2b5bf6c3a47"
     }
 ]
