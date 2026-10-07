@@ -20,5 +20,31 @@
         "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/DailymotionProvider.cs3",
         "name": "DailymotionProvider",
         "jarHash": "sha256-5a2062be9636d91a5ebe437a5f279bcab730c45ca79acdbe64457f8bbefeb775"
+    },
+    {
+        "iconUrl": "https://sinewix.com/favicon.png",
+        "jarFileSize": 86414,
+        "fileHash": "sha256-7ffa439b8689d157cdb6513f441ba76c05b304a68bcb8522010851d44bccfcce",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/SafakStream/extensions",
+        "fileSize": 22312,
+        "status": 1,
+        "authors": [
+            "SafakStream"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "Anime",
+            "AsianDrama",
+            "Cartoon"
+        ],
+        "version": 1,
+        "internalName": "SinewixProvider",
+        "jarUrl": "https://raw.githubusercontent.com/SafakStream/extensions/builds/SinewixProvider.jar",
+        "description": "Sinewix i\u00e7erik sa\u011flay\u0131c\u0131s\u0131 - film, dizi, anime ve daha fazlas\u0131",
+        "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/SinewixProvider.cs3",
+        "name": "SinewixProvider",
+        "jarHash": "sha256-2202e9092380697de52a3501bc33a7b8c1c7a58d3375236e5f89daa5ea585d96"
     }
 ]
