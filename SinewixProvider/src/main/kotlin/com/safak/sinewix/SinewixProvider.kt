@@ -8,7 +8,7 @@ class SinewixProvider : MainAPI() {
     override var name = "Sinewix"
     override val hasMainPage = true
     override val hasQuickSearch = true
-    override val lang = "tr"
+    override var lang = "tr"
     override val supportedTypes = setOf(
         TvType.Movie,
         TvType.TvSeries,
