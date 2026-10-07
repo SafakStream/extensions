@@ -45,8 +45,9 @@ data class SinewixYeniBolum(
 
 // API response wrapper'ları
 data class SinewixResponse(
+    @JsonProperty("current_page") val currentPage: Int? = null,
     @JsonProperty("data") val data: List<SinewixItem>? = null,
-    @JsonProperty("search_response") val searchResponse: List<SinewixItem>? = null
+    @JsonProperty("search") val searchResponse: List<SinewixItem>? = null
 )
 
 data class SinewixYeniBolumResponse(
