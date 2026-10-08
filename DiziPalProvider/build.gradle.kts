@@ -16,6 +16,4 @@ cloudstream {
 
     tvTypes = listOf("Movie", "TvSeries")
     iconUrl = "https://www.google.com/s2/favicons?domain=dizipal1587.com&sz=128"
-
-    isCrossPlatform = true
 }
