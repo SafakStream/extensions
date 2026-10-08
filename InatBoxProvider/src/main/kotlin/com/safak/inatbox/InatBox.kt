@@ -1,17 +1,14 @@
 package com.safak.inatbox
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.URI
 
 class InatBox : MainAPI() {
     override var mainUrl = InatBoxCrypto.DEFAULT_CATEGORY_URL
@@ -22,8 +19,12 @@ class InatBox : MainAPI() {
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries, TvType.Live)
 
     private val urlToSearchResponse = mutableMapOf<String, SearchResponse>()
-    private val catalogMutex = Mutex()
-    @Volatile private var cachedHomePageResponse: HomePageResponse? = null
+
+    @Volatile
+    private var catalogLoaded = false
+
+    @Volatile
+    private var cachedHomePageResponse: HomePageResponse? = null
 
     override val mainPage = mainPageOf(
         InatBoxCrypto.DEFAULT_CATEGORY_URL to "InatBox"
@@ -39,15 +40,15 @@ class InatBox : MainAPI() {
             ?: throw ErrorLoadingException("Kategorilere ulaşılamadı!")
     }
 
-    private suspend fun ensureCatalogLoaded(): Boolean {
-        if (urlToSearchResponse.isNotEmpty() && cachedHomePageResponse != null) return true
-        return catalogMutex.withLock {
-            if (urlToSearchResponse.isNotEmpty() && cachedHomePageResponse != null) return@withLock true
-            loadCatalog()
+    private suspend fun ensureCatalogLoaded() {
+        if (catalogLoaded && cachedHomePageResponse != null) return
+        synchronized(this) {
+            if (catalogLoaded && cachedHomePageResponse != null) return
         }
+        loadCatalog()
     }
 
-    private suspend fun loadCatalog(): Boolean {
+    private suspend fun loadCatalog() {
         val bootstrapDomain = try {
             InatBoxCrypto.fetchBootstrapDomain()
         } catch (e: Exception) {
@@ -58,21 +59,20 @@ class InatBox : MainAPI() {
         val decryptedCategoriesJson = try {
             makeInatRequest(targetCategoryUrl)
         } catch (e: Exception) {
-            return false
-        } ?: return false
+            null
+        } ?: return
 
-        val allCategories = try {
-            jacksonObjectMapper().readValue(
+        val allCategories: List<Kategoriler> = try {
+            val mapper = jacksonObjectMapper()
+            mapper.readValue(
                 decryptedCategoriesJson,
-                jacksonObjectMapper().typeFactory.constructCollectionType(
-                    List::class.java, Kategoriler::class.java
-                )
+                object : TypeReference<List<Kategoriler>>() {}
             )
         } catch (e: Exception) {
-            return false
+            return
         }
 
-        val filteredCategories = allCategories.filter { kategori ->
+        val filteredCategories: List<Kategoriler> = allCategories.filter { kategori ->
             val catType = kategori.catType ?: ""
             val catName = kategori.catName ?: ""
             val catUrl = kategori.catUrl ?: ""
@@ -87,28 +87,31 @@ class InatBox : MainAPI() {
             catUrl.isNotBlank()
         }
 
-        val homePageLists = filteredCategories.mapNotNull { kategori ->
-            val catUrl = kategori.catUrl ?: return@mapNotNull null
-            val catName = kategori.catName ?: return@mapNotNull null
+        val homePageLists = mutableListOf<HomePageList>()
+        for (kategori in filteredCategories) {
+            val catUrl = kategori.catUrl ?: continue
+            val catName = kategori.catName ?: continue
 
             val items = try {
-                val response = makeInatRequest(catUrl) ?: return@mapNotNull null
+                val response = makeInatRequest(catUrl) ?: continue
                 getSearchResponseList(response, 30)
             } catch (e: Exception) {
                 emptyList()
             }
 
-            if (items.isEmpty()) return@mapNotNull null
+            if (items.isEmpty()) continue
 
-            HomePageList(
-                name = catName,
-                list = items,
-                isHorizontalImages = true
+            homePageLists.add(
+                HomePageList(
+                    name = catName,
+                    list = items,
+                    isHorizontalImages = true
+                )
             )
         }
 
         cachedHomePageResponse = newHomePageResponse(homePageLists)
-        return true
+        catalogLoaded = true
     }
 
     // ================================================================
@@ -120,18 +123,19 @@ class InatBox : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val trimmedQuery = query.trim()
         if (trimmedQuery.isEmpty()) return emptyList()
-        if (urlToSearchResponse.isEmpty()) ensureCatalogLoaded()
+        if (!catalogLoaded) ensureCatalogLoaded()
 
         val normalizedQuery = normalizeForSearch(trimmedQuery)
 
-        val cachedResults = synchronized(urlToSearchResponse) {
+        return synchronized(urlToSearchResponse) {
             urlToSearchResponse.values
-                .filter { it.name.contains(trimmedQuery, ignoreCase = true) ||
-                        (normalizedQuery.isNotEmpty() &&
-                         normalizeForSearch(it.name).contains(normalizedQuery, ignoreCase = true)) }
+                .filter { sr ->
+                    sr.name.contains(trimmedQuery, ignoreCase = true) ||
+                    (normalizedQuery.isNotEmpty() &&
+                     normalizeForSearch(sr.name).contains(normalizedQuery, ignoreCase = true))
+                }
                 .distinctBy { normalizeForSearch(it.name) }
         }
-        return cachedResults
     }
 
     private fun getSearchResponseList(jsonResponse: String, maxItems: Int = -1): List<SearchResponse> {
@@ -196,7 +200,7 @@ class InatBox : MainAPI() {
                         }
                     }
                 } catch (e: Exception) {
-                    // tek bir öğe hatalıysa atla
+                    // tek öğe hatalıysa atla
                 }
             }
         } catch (e: Exception) {
@@ -279,10 +283,6 @@ class InatBox : MainAPI() {
         }
     }
 
-    // ----------------------------------------------------------------
-    // Load response parsers
-    // ----------------------------------------------------------------
-
     private suspend fun parseMovieResponse(item: JSONObject): LoadResponse? {
         return if (!item.has("diziType")) {
             val name = item.optString("chName")
@@ -299,7 +299,7 @@ class InatBox : MainAPI() {
             val poster = item.optString("diziImg")
             val plot = item.optString("diziDetay")
 
-            val jsonResponse = makeInatRequest(diziUrl) ?: return null
+            makeInatRequest(diziUrl) ?: return null
 
             newMovieLoadResponse(
                 name = name,
@@ -334,14 +334,24 @@ class InatBox : MainAPI() {
         if (hasSeasons) {
             for (i in 0 until jsonArray.length()) {
                 val seasonItem = jsonArray.getJSONObject(i)
-                val seasonName = seasonItem.optString("sezonName",
-                    seasonItem.optString("seasonName",
-                        seasonItem.optString("diziName", "Sezon ${i + 1}")))
-                val seasonUrl = seasonItem.optString("sezonUrl",
-                    seasonItem.optString("seasonUrl",
-                        seasonItem.optString("diziUrl")))
-                val seasonImg = seasonItem.optString("seasonImg",
-                    seasonItem.optString("diziImg", posterUrl))
+                val seasonName = seasonItem.optString(
+                    "sezonName",
+                    seasonItem.optString(
+                        "seasonName",
+                        seasonItem.optString("diziName", "Sezon ${i + 1}")
+                    )
+                )
+                val seasonUrl = seasonItem.optString(
+                    "sezonUrl",
+                    seasonItem.optString(
+                        "seasonUrl",
+                        seasonItem.optString("diziUrl")
+                    )
+                )
+                val seasonImg = seasonItem.optString(
+                    "seasonImg",
+                    seasonItem.optString("diziImg", posterUrl)
+                )
 
                 seasonDataList.add(SeasonData(i + 1, seasonName))
 
@@ -383,7 +393,7 @@ class InatBox : MainAPI() {
         ) {
             this.posterUrl = posterUrl
             this.plot = plot
-            this.seasonNames = seasonDataList.map { it.name }
+            this.seasonNames = seasonDataList
         }
     }
 
@@ -409,7 +419,7 @@ class InatBox : MainAPI() {
 
     private suspend fun parseSSportResponse(item: JSONObject): LoadResponse? {
         return try {
-            val response = com.lagradost.cloudstream3.app.get(
+            val response = app.get(
                 "https://sprspr.help/CDN/SSP/bir-p-no-cron.php",
                 headers = mapOf(
                     "user-agent" to "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15",
@@ -495,7 +505,6 @@ class InatBox : MainAPI() {
     ) {
         val headers = mutableMapOf<String, String>()
 
-        // chHeaders JSON parse
         if (chContent.chHeaders.isNotBlank() && chContent.chHeaders != "null") {
             try {
                 val jsonHeaders = JSONArray(chContent.chHeaders).getJSONObject(0)
@@ -513,11 +522,10 @@ class InatBox : MainAPI() {
                     }
                 }
             } catch (e: Exception) {
-                // header parse hatası önemli değil
+                // header parse hatası
             }
         }
 
-        // chReg parse
         var regex1 = ""
         var regex2 = ""
         var regex2p: String? = null
@@ -529,11 +537,10 @@ class InatBox : MainAPI() {
                 if (jsonReg.has("Regex2p")) regex2p = jsonReg.optString("Regex2p")
                 if (jsonReg.has("playSH2")) headers["Cookie"] = jsonReg.optString("playSH2")
             } catch (e: Exception) {
-                // reg parse hatası önemli değil
+                // reg parse hatası
             }
         }
 
-        // chType'a göre yönlendirme
         when {
             chContent.chType.contains("tekli_regex_lb_sh", true) -> {
                 handleTekliRegex(chContent, headers, regex1, regex2, regex2p, subtitleCallback, callback)
@@ -560,7 +567,11 @@ class InatBox : MainAPI() {
         val signedHeaders = InatBoxCrypto.getSignedHeaders(chContent.chUrl, "GET", "").toMutableMap()
         headers.forEach { (k, v) -> signedHeaders[k] = v }
 
-        val response = com.lagradost.cloudstream3.app.get(chContent.chUrl, headers = signedHeaders)
+        val response = try {
+            app.get(chContent.chUrl, headers = signedHeaders)
+        } catch (e: Exception) {
+            return
+        }
         if (!response.isSuccessful) return
 
         val encryptedText = response.text.trim()
@@ -600,7 +611,11 @@ class InatBox : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val response = com.lagradost.cloudstream3.app.get(chContent.chUrl, headers = headers)
+        val response = try {
+            app.get(chContent.chUrl, headers = headers)
+        } catch (e: Exception) {
+            return
+        }
         if (!response.isSuccessful) return
 
         val responseText = response.text.trim()
@@ -670,10 +685,10 @@ class InatBox : MainAPI() {
             val body = "1=$randomKey&0=$randomKey"
             val headers = InatBoxCrypto.getSignedHeaders(url, "POST", body)
 
-            val response = com.lagradost.cloudstream3.app.post(
+            val response = app.post(
                 url = url,
-                data = body,
-                headers = headers
+                headers = headers,
+                data = body
             )
 
             if (!response.isSuccessful) return null
