@@ -15,5 +15,4 @@ cloudstream {
     status = 0
     tvTypes = listOf("Live")
     iconUrl = "https://raw.githubusercontent.com/Wiojelt/TurkSpor/main/icon.png"
-    name = "NetVGold"   // ← BU SATIRI EKLE
 }
