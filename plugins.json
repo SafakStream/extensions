@@ -22,6 +22,26 @@
         "jarHash": "sha256-5a2062be9636d91a5ebe437a5f279bcab730c45ca79acdbe64457f8bbefeb775"
     },
     {
+        "iconUrl": "https://raw.githubusercontent.com/Wiojelt/TurkSpor/main/icon.png",
+        "fileHash": "sha256-c0ded217531b5366a45e6602675c9f01ce3dea0ee9244f6a96617e8eec30f34e",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/SafakStream/extensions",
+        "fileSize": 16421,
+        "status": 0,
+        "language": "tr",
+        "authors": [
+            "SafakStream"
+        ],
+        "tvTypes": [
+            "Live"
+        ],
+        "version": 1,
+        "internalName": "NetVGoldProvider",
+        "description": "NETV Gold Spor kanallar\u0131n\u0131 canl\u0131 olarak izleyin.",
+        "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/NetVGoldProvider.cs3",
+        "name": "NetVGoldProvider"
+    },
+    {
         "iconUrl": "https://sinewix.com/favicon.png",
         "jarFileSize": 87069,
         "fileHash": "sha256-e7ac163d0c23782f24dbb162889de5f031928b7162ba5f98ec70143cd9dbb884",
