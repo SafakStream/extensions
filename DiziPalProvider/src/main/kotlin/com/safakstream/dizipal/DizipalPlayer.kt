@@ -47,7 +47,12 @@ class DizipalPlayer : ExtractorApi() {
 
             if (!subUrls.contains(subUrl)) {
                 subUrls.add(subUrl)
-                subtitleCallback(newSubtitleFile(subLang, fixUrl(subUrl)))
+                val fixedSubUrl = when {
+                    subUrl.startsWith("//") -> "https:$subUrl"
+                    !subUrl.startsWith("http") -> "https://$subUrl"
+                    else -> subUrl
+                }
+                subtitleCallback(newSubtitleFile(subLang, fixedSubUrl))
             }
         }
 
