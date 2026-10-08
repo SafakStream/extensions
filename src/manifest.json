@@ -1,0 +1,8 @@
+{
+  "name": "DiziPal",
+  "pluginClassName": "com.safakstream.dizipal.DiziPalPlugin",
+  "version": 1,
+  "requiresResources": false,
+  "author": "SafakStream",
+  "description": "SafakStream DiziPal Eklentisi"
+}
