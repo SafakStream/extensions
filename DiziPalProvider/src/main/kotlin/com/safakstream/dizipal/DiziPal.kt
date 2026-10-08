@@ -2,16 +2,10 @@ package com.safakstream.dizipal
 
 import android.util.Base64
 import android.util.Log
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.network.CloudflareKiller
-import com.lagradost.nicehttp.Requests
-import kotlinx.coroutines.runBlocking
-import okhttp3.Interceptor
-import okhttp3.Response
-import org.jsoup.nodes.Document
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.security.spec.KeySpec
 import javax.crypto.Cipher
@@ -32,20 +26,9 @@ class DiziPal : MainAPI() {
     override var sequentialMainPageDelay = 150L
     override var sequentialMainPageScrollDelay = 150L
 
-    private val cloudflareKiller by lazy { CloudflareKiller() }
-    private val interceptor by lazy { CloudflareInterceptor(cloudflareKiller) }
-
     private val passphrase = "3hPn4uCjTVtfYWcjIcoJQ4cL1WWk1qxXI39egLYOmNv6IblA7eKJz68uU3eLzux1biZLCms0quEjTYniGv5z1JcKbNIsDQFSeIZOBZJz4is6pD7UyWDggWWzTLBQbHcQFpBQdClnuQaMNUHtLHTpzCvZy33p6I7wFBvL4fnXBYH84aUIyWGTRvM2G5cfoNf4705tO2kv"
 
     private val TAG = "DiziPal"
-
-    inner class CloudflareInterceptor(private val killer: CloudflareKiller) : Interceptor {
-        override fun intercept(chain: Interceptor.Chain): Response {
-            return runBlocking {
-                killer.intercept(chain)
-            }
-        }
-    }
 
     override val mainPage = mainPageOf(
         "$mainUrl/yabanci-dizi-izle" to "Yeni Diziler",
@@ -120,11 +103,7 @@ class DiziPal : MainAPI() {
             else "${request.data}?sayfa=$page"
         } else request.data
 
-        val document = app.get(
-            url,
-            headers = getHeaders(mainUrl),
-            interceptor = interceptor
-        ).document
+        val document = app.get(url, headers = getHeaders(mainUrl)).document
 
         val home = mutableListOf<SearchResponse>()
 
@@ -172,7 +151,7 @@ class DiziPal : MainAPI() {
                 val htmlNode = rootNode.at("/data/html")
 
                 if (!htmlNode.isMissingNode) {
-                    val parsedDoc = org.jsoup.Jsoup.parse(htmlNode.asText())
+                    val parsedDoc = Jsoup.parse(htmlNode.asText())
                     val apiResults = parsedDoc.select("div.bg-\\[\\#22232a\\]")
                         .mapNotNull { diziler(it) }
 
@@ -224,11 +203,7 @@ class DiziPal : MainAPI() {
     // ---- Detay yükleme ----
 
     override suspend fun load(url: String): LoadResponse? {
-        val document = app.get(
-            url,
-            headers = getHeaders(mainUrl),
-            interceptor = interceptor
-        ).document
+        val document = app.get(url, headers = getHeaders(mainUrl)).document
 
         val poster = document.selectFirst("div.page-top img[alt]")?.attr("src")
         val year = document.selectXpath("//div[text()='Yıl']//following-sibling::div").text()
@@ -290,7 +265,7 @@ class DiziPal : MainAPI() {
     ): Boolean {
         Log.d(TAG, "--> loadLinks ÇAĞRILDI. Gelen URL: $data")
 
-        val doc = app.get(data, headers = getHeaders(mainUrl), interceptor = interceptor).document
+        val doc = app.get(data, headers = getHeaders(mainUrl)).document
 
         val encryptedText = doc.selectFirst("div[data-rm-k=true]")?.text() ?: ""
         Log.d(TAG, "--> Şifreli metin uzunluğu: ${encryptedText.length}")
