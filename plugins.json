@@ -2,10 +2,10 @@
     {
         "iconUrl": "https://beyazelma78.com/favicon.png",
         "jarFileSize": 32559,
-        "fileHash": "sha256-b12fb686a6676166c8aa68ebbc2fe7c0bb97083d5936e04899018fd2db40b329",
+        "fileHash": "sha256-4412c9e87f18f9b015a5b1255191501d1aea4059cfe4ab6ec1c35cdb796ca0a4",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/SafakStream/extensions",
-        "fileSize": 9813,
+        "fileSize": 9812,
         "status": 1,
         "authors": [
             "SafakStream"
@@ -19,7 +19,29 @@
         "description": "BeyazElma Canl\u0131 Yay\u0131n ve TV Eklentisi",
         "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/DailymotionProvider.cs3",
         "name": "DailymotionProvider",
-        "jarHash": "sha256-5a2062be9636d91a5ebe437a5f279bcab730c45ca79acdbe64457f8bbefeb775"
+        "jarHash": "sha256-c53a643c93615972da23b513645fe216cfd3a9058a61fd38940cea3b9355beb3"
+    },
+    {
+        "iconUrl": "https://raw.githubusercontent.com/cencbit/ssl/main/icon.png",
+        "fileHash": "sha256-05055481048b28ea814eb3e6b21114512cf8df447db93526ca36f5efd5ab568b",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/SafakStream/extensions",
+        "fileSize": 42531,
+        "status": 1,
+        "language": "tr",
+        "authors": [
+            "Safak"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "Live"
+        ],
+        "version": 1,
+        "internalName": "InatBoxProvider",
+        "description": "InatBOX - T\u00fcrk film, dizi ve canl\u0131 TV",
+        "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/InatBoxProvider.cs3",
+        "name": "InatBoxProvider"
     },
     {
         "iconUrl": "https://sinewix.com/favicon.png",
