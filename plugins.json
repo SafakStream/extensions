@@ -1,6 +1,28 @@
 [
     {
         "iconUrl": "https://beyazelma78.com/favicon.png",
+        "jarFileSize": 35615,
+        "fileHash": "sha256-711369b1b6e5b0b16bff9db836cbf6b20869551fe9db8b2445a75785cf86b3db",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/SafakStream/extensions",
+        "fileSize": 11539,
+        "status": 1,
+        "authors": [
+            "SafakStream"
+        ],
+        "tvTypes": [
+            "Live"
+        ],
+        "version": 1,
+        "internalName": "BeyazElmaProvider",
+        "jarUrl": "https://raw.githubusercontent.com/SafakStream/extensions/builds/BeyazElmaProvider.jar",
+        "description": "BeyazElma - T\u00fcrk canl\u0131 spor kanallar\u0131 (beIN Sports, S Sport, TRT Spor, Tabii Spor, Exxen, Tivibu ve daha fazlas\u0131)",
+        "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/BeyazElmaProvider.cs3",
+        "name": "BeyazElmaProvider",
+        "jarHash": "sha256-8f52ba71de02b974cb9d985aed686bed789cfbf75a0817cab1c6e088abbb3105"
+    },
+    {
+        "iconUrl": "https://beyazelma78.com/favicon.png",
         "jarFileSize": 32559,
         "fileHash": "sha256-b12fb686a6676166c8aa68ebbc2fe7c0bb97083d5936e04899018fd2db40b329",
         "apiVersion": 1,
