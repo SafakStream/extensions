@@ -81,63 +81,119 @@ class BeyazElma : MainAPI() {
     // 4. LOADLINKS: iframe → embed → XOR çöz → m3u8
     // ═══════════════════════════════════════════════════════
     override suspend fun loadLinks(
-        data: String,
-        isCasting: Boolean,
-        subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit
-    ): Boolean {
-        // 1) Kanal sayfasını çek
-        val channelDoc = app.get(data).document
+    data: String,
+    isCasting: Boolean,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit
+): Boolean {
+    // 1) Kanal sayfasını çek
+    val channelHtml = app.get(data).text
 
-        // 2) iframe src'sini bul: /api/embed?u=TOKEN
-        val iframeSrc = channelDoc
-            .selectFirst("iframe[src*=/api/embed]")
-            ?.attr("src")
-            ?: return false
+    // 2) streamUrl'leri regex ile çıkar
+    // Hem escape'li (\"streamUrl\":\"...\") hem escape'siz ("streamUrl":"...") destekle
+    val streamUrls = Regex("""\\?"streamUrl2?\\?"\s*:\s*\\?"([^"\\]+)""")
+        .findAll(channelHtml)
+        .map { it.groupValues[1] }
+        .distinct()
+        .toList()
 
-        // 3) Tam URL'ye çevir
-        val embedUrl = if (iframeSrc.startsWith("http")) iframeSrc else "$mainUrl$iframeSrc"
+    android.util.Log.d("BeyazElma", "Bulunan stream URL sayısı: ${streamUrls.size}")
 
-        // 4) Embed sayfasını çek
-        val embedHtml = app.get(embedUrl).text
+    if (streamUrls.isEmpty()) {
+    // Önce: HTML'de "streamUrl" kelimesi geçiyor mu? (evet/hayır)
+    android.util.Log.e("BeyazElma", "streamUrl bulunamadı! HTML'de 'streamUrl' geçiyor mu: ${channelHtml.contains("streamUrl")}")
+    
+    // Sonra: HTML'in ilk 300 karakterini göster
+    android.util.Log.e("BeyazElma", "HTML ilk 300: ${channelHtml.take(300)}")
+    
+    return false
+}
 
-        // 5) _ja0 array'ini bul (XOR şifreli)
-        val ja0Regex = Regex("""_ja0\s*=\s*\[([\d,\s]+)]""")
-        val ja0Match = ja0Regex.find(embedHtml) ?: return false
-        val numbers = ja0Match.groupValues[1]
-            .split(",")
-            .mapNotNull { it.trim().toIntOrNull() }
+    android.util.Log.d("BeyazElma", "URL'ler: $streamUrls")
 
-        if (numbers.isEmpty()) return false
+    var found = false
 
-        // 6) XOR çöz: ((n XOR 120) - 108 + 256) % 256
-        val decoded = numbers.map { n ->
-            ((n xor 120) - 108 + 256) % 256
-        }.map { it.toChar() }.joinToString("")
+    for (streamUrl in streamUrls) {
+        try {
+            val embedUrl = if (streamUrl.startsWith("http")) streamUrl
+                           else "$mainUrl$streamUrl"
 
-        // 7) SIGNED_URL'i çıkar
-        val signedRegex = Regex("""SIGNED_URL\s*=\s*"([^"]+)"""")
-        val m3u8Url = signedRegex.find(decoded)?.groupValues?.get(1)
-            ?: return false
+            android.util.Log.d("BeyazElma", "Embed deneniyor: $embedUrl")
 
-        // 8) CloudStream'e ver
-        callback.invoke(
-            newExtractorLink(
-                source = this.name,
-                name = this.name,
-                url = m3u8Url,
-                type = ExtractorLinkType.M3U8
-            ) {
-                this.referer = embedUrl
-                this.quality = Qualities.Unknown.value
-                this.headers = mapOf(
-                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                )
+            val embedHtml = app.get(embedUrl).text
+
+            // 4 farklı yöntem dene
+            var m3u8Url: String? = null
+
+            // Yöntem 1: SIGNED_URL direkt
+            m3u8Url = Regex("""SIGNED_URL\s*=\s*"([^"]+)"""")
+                .find(embedHtml)?.groupValues?.get(1)
+
+            // Yöntem 2: _ja0 XOR çöz
+            if (m3u8Url == null) {
+                val ja0Match = Regex("""_ja0\s*=\s*\[([\d,\s]+)]""").find(embedHtml)
+                if (ja0Match != null) {
+                    val numbers = ja0Match.groupValues[1]
+                        .split(",")
+                        .mapNotNull { it.trim().toIntOrNull() }
+                    val decoded = numbers.map { n ->
+                        ((n xor 120) - 108 + 256) % 256
+                    }.map { it.toChar() }.joinToString("")
+                    m3u8Url = Regex("""SIGNED_URL\s*=\s*"([^"]+)"""")
+                        .find(decoded)?.groupValues?.get(1)
+                }
             }
-        )
-        return true
+
+            // Yöntem 3: "primary" JSON alanı (escape'li ve escape'siz)
+            if (m3u8Url == null) {
+                val primary = Regex("""\\?"primary\\?"\s*:\s*\\?"([^"\\]+)""")
+                    .find(embedHtml)?.groupValues?.get(1)
+                if (primary != null) {
+                    m3u8Url = when {
+                        primary.contains(".m3u8") -> primary
+                        primary.contains("?") -> "$primary&format=.m3u8"
+                        else -> "$primary?format=.m3u8"
+                    }
+                }
+            }
+
+            // Yöntem 4: Direkt .m3u8 linki ara
+            if (m3u8Url == null) {
+                m3u8Url = Regex("""https?://[^\s"'<>\\]+\.m3u8[^\s"'<>\\]*""")
+                    .find(embedHtml)?.value
+            }
+
+            if (m3u8Url != null) {
+                android.util.Log.d("BeyazElma", "✅ m3u8 bulundu: $m3u8Url")
+
+                callback.invoke(
+                    newExtractorLink(
+                        source = this.name,
+                        name = this.name,
+                        url = m3u8Url,
+                        type = ExtractorLinkType.M3U8
+                    ) {
+                        this.referer = embedUrl
+                        this.quality = Qualities.Unknown.value
+                        this.headers = mapOf(
+                            "User-Agent" to "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.82 Mobile Safari/537.36",
+                            "Referer" to embedUrl,
+                            "Origin" to mainUrl
+                        )
+                    }
+                )
+                found = true
+            } else {
+                android.util.Log.w("BeyazElma", "❌ m3u8 bulunamadı. Embed HTML ilk 1000: ${embedHtml.take(1000)}")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("BeyazElma", "Hata ($streamUrl): ${e.message}", e)
+            continue
+        }
     }
+
+    return found
+}
 
     // ═══════════════════════════════════════════════════════
     // YARDIMCI: <a> elementini SearchResponse'a çevir
