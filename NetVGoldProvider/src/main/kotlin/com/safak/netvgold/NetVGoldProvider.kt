@@ -9,10 +9,6 @@ import com.lagradost.cloudstream3.utils.newExtractorLink
 import java.net.URLEncoder
 import java.util.Locale
 
-/**
- * NeTV Gold Spor — bağımsız CS3 eklentisi
- * Kanal listesini GitHub'dan JSON olarak çeker, m3u8 linklerini oynatır.
- */
 class NetVGoldProvider : MainAPI() {
     override var mainUrl = "https://github.com/Wiojelt/TurkSpor/"
     override var name = "NETV Gold Spor"
@@ -27,7 +23,6 @@ class NetVGoldProvider : MainAPI() {
         private const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/139 Mobile Safari/537.36"
 
-        /** Katalog alınamazsa kullanılacak minimum yedek liste */
         private val FALLBACK_JSON = """
         [
           {"id":"ssporred1","title":"S Sport 1","url":"https://raw.githubusercontent.com/icebu12/turbo-guacamole/refs/heads/main/streams/stream_ss.m3u8","referer":"https://taraftarium1081.xyz/"},
@@ -35,7 +30,7 @@ class NetVGoldProvider : MainAPI() {
         ]
         """.trimIndent()
 
-        private const val CACHE_TTL_MS = 10L * 60L * 1000L // 10 dakika
+        private const val CACHE_TTL_MS = 10L * 60L * 1000L
     }
 
     private var cached: List<NetVChannel> = emptyList()
@@ -45,9 +40,6 @@ class NetVGoldProvider : MainAPI() {
         "all" to "Spor Kanalları"
     )
 
-    // ----------------------------------------------------------------
-    // Kanal listesi: cache + fallback
-    // ----------------------------------------------------------------
     private suspend fun channels(force: Boolean = false): List<NetVChannel> {
         if (!force && cached.isNotEmpty() &&
             System.currentTimeMillis() - cachedAt < CACHE_TTL_MS
@@ -70,7 +62,6 @@ class NetVGoldProvider : MainAPI() {
             emptyList()
         }
 
-        // Doğrulama + tekilleştirme
         val cleaned = parsed
             .filter { ch ->
                 ch.id.matches(Regex("[A-Za-z0-9_-]{1,80}")) &&
@@ -89,16 +80,12 @@ class NetVGoldProvider : MainAPI() {
         return cached
     }
 
-    // ----------------------------------------------------------------
-    // Ana sayfa: basit gruplama (kanal adının ilk kelimesine göre)
-    // ----------------------------------------------------------------
     override suspend fun getMainPage(
         page: Int,
         request: MainPageRequest
     ): HomePageResponse {
         val list = channels(force = page > 1)
 
-        // "beIN Sports 1" -> "beIN", "S Sport 1" -> "S", "TRT Spor" -> "TRT"
         val sections = list
             .groupBy { it.title.split(" ").firstOrNull().orEmpty().ifBlank { "Diğer" } }
             .map { (groupName, groupList) ->
@@ -112,9 +99,6 @@ class NetVGoldProvider : MainAPI() {
         return newHomePageResponse(sections, false)
     }
 
-    // ----------------------------------------------------------------
-    // Arama: kanal başlığında case-insensitive "contains"
-    // ----------------------------------------------------------------
     override suspend fun search(query: String): List<SearchResponse>? {
         val term = query.lowercase(Locale("tr"))
         return channels()
@@ -122,28 +106,22 @@ class NetVGoldProvider : MainAPI() {
             .map { it.toSearchResponse() }
     }
 
-    // ----------------------------------------------------------------
-    // Load: kanal detayı (Live stream için)
-    // ----------------------------------------------------------------
     override suspend fun load(url: String): LoadResponse? {
-    val id = extractId(url)
-        ?: throw ErrorLoadingException("Kanal kimliği eksik.")
+        val id = extractId(url)
+            ?: throw ErrorLoadingException("Kanal kimliği eksik.")
 
-    val channel = channels().firstOrNull { it.id == id }
-        ?: throw ErrorLoadingException("Kanal güncel NETV Gold listesinde bulunamadı.")
+        val channel = channels().firstOrNull { it.id == id }
+            ?: throw ErrorLoadingException("Kanal güncel NETV Gold listesinde bulunamadı.")
 
-    return newLiveStreamLoadResponse(
-        name = channel.title,
-        url = url,
-        dataUrl = url
-    ) {
-        this.posterUrl = channel.logo
+        return newLiveStreamLoadResponse(
+            name = channel.title,
+            url = url,
+            dataUrl = url
+        ) {
+            this.posterUrl = channel.logo
+        }
     }
-}
 
-    // ----------------------------------------------------------------
-    // LoadLinks: m3u8 linkini callback ile ver
-    // ----------------------------------------------------------------
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
@@ -153,7 +131,6 @@ class NetVGoldProvider : MainAPI() {
         val id = extractId(data) ?: return false
         val channel = channels().firstOrNull { it.id == id } ?: return false
 
-        // Ana kaynak + varsa ek kaynaklar
         val sources = buildList {
             add(NetVSource(name = "Ana", url = channel.url, referer = channel.referer))
             addAll(channel.sources)
@@ -186,7 +163,7 @@ class NetVGoldProvider : MainAPI() {
     }
 
     // ----------------------------------------------------------------
-    // Yardımcılar
+    // Yardımcılar (sınıf içinde!)
     // ----------------------------------------------------------------
     private fun extractId(url: String): String? =
         Regex("[?&]netvgold=([^&]+)").find(url)?.groupValues?.getOrNull(1)
@@ -195,19 +172,16 @@ class NetVGoldProvider : MainAPI() {
         "$mainUrl?netvgold=${URLEncoder.encode(this.id, "UTF-8")}"
 
     private fun NetVChannel.toSearchResponse(): LiveSearchResponse {
-    val self = this@NetVGoldProvider
-    return self.newLiveSearchResponse(
-        name = this.title,
-        url = this.pageUrl(),
-        type = TvType.Live
-    ) {
-        this.posterUrl = this@toSearchResponse.logo
+        return this@NetVGoldProvider.newLiveSearchResponse(
+            name = this.title,
+            url = this.pageUrl(),
+            type = TvType.Live
+        ) {
+            this.posterUrl = this@toSearchResponse.logo
+        }
     }
 }
 
-// --------------------------------------------------------------------
-// Data classes (JSON modelleri)
-// --------------------------------------------------------------------
 data class NetVChannel(
     @JsonProperty("id") val id: String = "",
     @JsonProperty("title") val title: String = "",
