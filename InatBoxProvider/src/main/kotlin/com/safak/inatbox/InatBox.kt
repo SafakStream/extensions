@@ -644,7 +644,7 @@ class InatBox : MainAPI() {
                 this.headers = headers
             })
         } else {
-            loadExtractor(streamUrl, chContent.chUrl, subtitleCallback, callback)
+            loadExtractor(streamUrl, headers, subtitleCallback, callback)
         }
     }
 
@@ -671,7 +671,7 @@ class InatBox : MainAPI() {
                 this.headers = headers
             })
         } else {
-            loadExtractor(finalUrl, headers["Referer"] ?: "", subtitleCallback, callback)
+            loadExtractor(finalUrl, headers, subtitleCallback, callback)
         }
     }
 
