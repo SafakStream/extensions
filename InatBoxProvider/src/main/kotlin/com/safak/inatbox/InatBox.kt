@@ -644,7 +644,7 @@ class InatBox : MainAPI() {
                 this.headers = headers
             })
         } else {
-            loadExtractor(streamUrl, headers, subtitleCallback, callback)
+            loadExtractor(streamUrl, chContent.chUrl, subtitleCallback, callback)
         }
     }
 
@@ -671,7 +671,7 @@ class InatBox : MainAPI() {
                 this.headers = headers
             })
         } else {
-            loadExtractor(finalUrl, headers, subtitleCallback, callback)
+            loadExtractor(finalUrl, chContent.chUrl, subtitleCallback, callback)
         }
     }
 
@@ -682,13 +682,16 @@ class InatBox : MainAPI() {
     private suspend fun makeInatRequest(url: String): String? {
         return try {
             val randomKey = InatBoxCrypto.getRandomAlphaNumeric(16)
-            val body = "1=$randomKey&0=$randomKey"
-            val headers = InatBoxCrypto.getSignedHeaders(url, "POST", body)
+            val bodyString = "1=$randomKey&0=$randomKey"
+            val headers = InatBoxCrypto.getSignedHeaders(url, "POST", bodyString)
 
             val response = app.post(
                 url = url,
                 headers = headers,
-                data = body
+                data = mapOf(
+                    "1" to randomKey,
+                    "0" to randomKey
+                )
             )
 
             if (!response.isSuccessful) return null
