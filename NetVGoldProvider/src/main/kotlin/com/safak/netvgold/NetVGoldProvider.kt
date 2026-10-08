@@ -194,13 +194,15 @@ class NetVGoldProvider : MainAPI() {
     private fun NetVChannel.pageUrl(): String =
         "$mainUrl?netvgold=${URLEncoder.encode(this.id, "UTF-8")}"
 
-    private fun NetVChannel.toSearchResponse(): LiveSearchResponse =
-        newLiveSearchResponse(
-            name = this.title,
-            url = this.pageUrl(),
-            type = TvType.Live,
-            posterUrl = this.logo
-        )
+    private fun NetVChannel.toSearchResponse(): LiveSearchResponse {
+    val self = this@NetVGoldProvider
+    return self.newLiveSearchResponse(
+        name = this.title,
+        url = this.pageUrl(),
+        type = TvType.Live
+    ) {
+        this.posterUrl = this@toSearchResponse.logo
+    }
 }
 
 // --------------------------------------------------------------------
