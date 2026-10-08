@@ -1,0 +1,11 @@
+package com.safak.inatbox
+
+import com.lagradost.cloudstream3.plugins.BasePlugin
+import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
+
+@CloudstreamPlugin
+class InatBoxPlugin : BasePlugin() {
+    override fun load() {
+        registerMainAPI(InatBox())
+    }
+}
