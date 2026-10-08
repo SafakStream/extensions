@@ -22,26 +22,6 @@
         "jarHash": "sha256-5a2062be9636d91a5ebe437a5f279bcab730c45ca79acdbe64457f8bbefeb775"
     },
     {
-        "iconUrl": "https://www.google.com/s2/favicons?domain=dizipal1587.com&sz=128",
-        "fileHash": "sha256-5b87e70bc9026cf09e01892987a609bab3b23f760327b773157b6d44d97db440",
-        "apiVersion": 1,
-        "repositoryUrl": "https://github.com/SafakStream/extensions",
-        "fileSize": 27035,
-        "status": 1,
-        "authors": [
-            "SafakStream"
-        ],
-        "tvTypes": [
-            "Movie",
-            "TvSeries"
-        ],
-        "version": 1,
-        "internalName": "DiziPalProvider",
-        "description": "DiziPal \u00fczerinden dizi ve film izleme imkan\u0131 sunar.",
-        "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/DiziPalProvider.cs3",
-        "name": "DiziPalProvider"
-    },
-    {
         "iconUrl": "https://sinewix.com/favicon.png",
         "jarFileSize": 87069,
         "fileHash": "sha256-e7ac163d0c23782f24dbb162889de5f031928b7162ba5f98ec70143cd9dbb884",
