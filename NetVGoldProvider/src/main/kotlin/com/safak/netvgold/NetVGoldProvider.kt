@@ -126,21 +126,20 @@ class NetVGoldProvider : MainAPI() {
     // Load: kanal detayı (Live stream için)
     // ----------------------------------------------------------------
     override suspend fun load(url: String): LoadResponse? {
-        val id = extractId(url)
-            ?: throw ErrorLoadingException("Kanal kimliği eksik.")
+    val id = extractId(url)
+        ?: throw ErrorLoadingException("Kanal kimliği eksik.")
 
-        val channel = channels().firstOrNull { it.id == id }
-            ?: throw ErrorLoadingException("Kanal güncel NETV Gold listesinde bulunamadı.")
+    val channel = channels().firstOrNull { it.id == id }
+        ?: throw ErrorLoadingException("Kanal güncel NETV Gold listesinde bulunamadı.")
 
-        return newLiveStreamLoadResponse(
-            name = channel.title,
-            url = url,
-            dataUrl = url,
-            posterUrl = channel.logo,
-            background = null,
-            description = null
-        )
+    return newLiveStreamLoadResponse(
+        name = channel.title,
+        url = url,
+        dataUrl = url
+    ) {
+        this.posterUrl = channel.logo
     }
+}
 
     // ----------------------------------------------------------------
     // LoadLinks: m3u8 linkini callback ile ver
