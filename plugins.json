@@ -44,6 +44,28 @@
         "name": "InatBoxProvider"
     },
     {
+        "iconUrl": "https://www.selcuksportshd01390f9702.xyz/favicon.png",
+        "jarFileSize": 27750,
+        "fileHash": "sha256-ad440b76a2e1f0f92e07af62dfe99da77f4fb82d3dc48df41d93437e48dc4baf",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/SafakStream/extensions",
+        "fileSize": 8320,
+        "status": 1,
+        "authors": [
+            "SafakStream"
+        ],
+        "tvTypes": [
+            "Live"
+        ],
+        "version": 1,
+        "internalName": "SelcukSportsProvider",
+        "jarUrl": "https://raw.githubusercontent.com/SafakStream/extensions/builds/SelcukSportsProvider.jar",
+        "description": "SelcukSports HD canl\u0131 ma\u00e7 yay\u0131nlar\u0131",
+        "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/SelcukSportsProvider.cs3",
+        "name": "SelcukSportsProvider",
+        "jarHash": "sha256-a6db69ef2316a605e832e6792b2d6459537e433e428bd6f21cb11f17af9d486b"
+    },
+    {
         "iconUrl": "https://sinewix.com/favicon.png",
         "jarFileSize": 87069,
         "fileHash": "sha256-e7ac163d0c23782f24dbb162889de5f031928b7162ba5f98ec70143cd9dbb884",
