@@ -5,3 +5,4 @@ include("DailymotionProvider")
 include("SinewixProvider")
 include("InatBoxProvider")
 include("SelcukSportsProvider")   // ← YENİ EKLENDİ
+include("BeyazElmaProvider")
