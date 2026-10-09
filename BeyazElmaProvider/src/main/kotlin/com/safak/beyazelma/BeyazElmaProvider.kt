@@ -2,7 +2,8 @@ package com.safak.beyazelma
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
 
 class BeyazElmaProvider : MainAPI() {
@@ -58,32 +59,29 @@ class BeyazElmaProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         return try {
-            val document = app.get(data).document
+            // data = https://beyazelma78.com/kanal/atv
+            // slug'ı çıkar: /kanal/atv -> atv
+            val slug = data.substringAfterLast("/").substringBefore("?").substringBefore("#")
 
-            var embedUrl: String? = null
+            if (slug.isBlank()) return false
 
-            document.select("link[rel=preload]").forEach { link ->
-                val href = link.attr("href")
-                if (href.contains("/api/embed")) {
-                    embedUrl = if (href.startsWith("http")) href else mainUrl.trimEnd('/') + href
-                }
-            }
+            // Doğrudan m3u8 linkini oluştur
+            val m3u8Url = "https://beyazelma.xtrahut.xyz/live/$slug/playlist.m3u8"
 
-            if (embedUrl == null) {
-                val match = Regex("""/api/embed\?u=[^"'\s&]+""").find(document.html())
-                if (match != null) {
-                    embedUrl = mainUrl.trimEnd('/') + match.value
-                }
-            }
+            callback(newExtractorLink(
+                source = this.name,
+                name = this.name,
+                url = m3u8Url,
+                type = ExtractorLinkType.M3U8
+            ) {
+                this.referer = "https://beyazelma.xtrahut.xyz/"
+                this.headers = mapOf(
+                    "User-Agent" to "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
+                    "Referer" to "https://beyazelma.xtrahut.xyz/",
+                    "Origin" to "https://beyazelma.xtrahut.xyz"
+                )
+            })
 
-            if (embedUrl == null) return false
-
-            loadExtractor(
-                embedUrl,
-                "https://beyazelma.xtrahut.xyz/",
-                subtitleCallback,
-                callback
-            )
             true
         } catch (e: Exception) {
             e.printStackTrace()
