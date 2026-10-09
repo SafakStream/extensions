@@ -13,7 +13,7 @@ class BeyazElmaProvider : MainAPI() {
     override var lang = "tr"
     override val supportedTypes = setOf(TvType.Live)
 
-    // Video sunucusu base URL'si
+    // Video sunucusu base URL'si (şifreli koddan çözüldü)
     private val streamBaseUrl = "https://beyazelma.xtrahut.xyz/live/"
 
     override val mainPage = mainPageOf(
@@ -36,13 +36,8 @@ class BeyazElmaProvider : MainAPI() {
         val fullUrl = if (href.startsWith("http")) href else mainUrl.trimEnd('/') + href
         val fullLogo = if (logoPath.startsWith("http")) logoPath else mainUrl.trimEnd('/') + logoPath
 
-        // URL'den slug'ı çıkar: /kanal/atv -> atv
-        val slug = href.substringAfterLast("/")
-
         return newLiveSearchResponse(name, fullUrl, TvType.Live) {
             this.posterUrl = fullLogo
-            // Slug'ı data olarak saklıyoruz
-            this.dataUrl = slug
         }
     }
 
@@ -53,6 +48,7 @@ class BeyazElmaProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
+        // url = https://beyazelma78.com/kanal/atv gibi
         return newLiveStreamLoadResponse(
             name = "BeyazElma Kanal",
             url = url,
@@ -67,13 +63,9 @@ class BeyazElmaProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         return try {
-            // data = "atv" gibi bir slug
-            // Eğer data tam URL ise slug'ı çıkar
-            val slug = if (data.contains("/")) {
-                data.substringAfterLast("/")
-            } else {
-                data
-            }
+            // data = https://beyazelma78.com/kanal/atv gibi bir URL
+            // Slug'ı çıkar: /kanal/atv -> atv
+            val slug = data.substringAfterLast("/").substringBefore("?").substringBefore("#")
 
             if (slug.isBlank()) return false
 
