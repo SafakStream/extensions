@@ -45,11 +45,11 @@
     },
     {
         "iconUrl": "https://www.selcuksportshd01390f9702.xyz/favicon.png",
-        "jarFileSize": 28445,
-        "fileHash": "sha256-00a2d80a7bb7991981a80b459f599568b28c0c0de1d28debee1476409f906c94",
+        "jarFileSize": 29014,
+        "fileHash": "sha256-f2571f1615bc01964f66e75887c069e5f0c7f8ebd64a2ab479473585c75d85f6",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/SafakStream/extensions",
-        "fileSize": 8784,
+        "fileSize": 9025,
         "status": 1,
         "authors": [
             "SafakStream"
@@ -63,7 +63,7 @@
         "description": "SelcukSports HD canl\u0131 ma\u00e7 yay\u0131nlar\u0131",
         "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/SelcukSportsProvider.cs3",
         "name": "SelcukSportsProvider",
-        "jarHash": "sha256-312fded5266c03ae1a179a1390ce3d7f1c1ecb9621e1ea3bc892556dbd64d8bb"
+        "jarHash": "sha256-8628be2ad59bcccdb4343c0b4464659ad6a4a25ce30bfb9a3165604900c164cc"
     },
     {
         "iconUrl": "https://sinewix.com/favicon.png",
