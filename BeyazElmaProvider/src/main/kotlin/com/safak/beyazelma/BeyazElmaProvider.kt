@@ -4,7 +4,8 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import org.jsoup.nodes.Element
+import org.json.JSONArray
+import org.json.JSONObject
 
 class BeyazElmaProvider : MainAPI() {
     override var mainUrl = "https://beyazelma78.com/"
@@ -13,7 +14,6 @@ class BeyazElmaProvider : MainAPI() {
     override var lang = "tr"
     override val supportedTypes = setOf(TvType.Live)
 
-    // Chrome UA — site tarayıcı kontrolü yapıyor
     private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
 
     private val defaultHeaders = mapOf(
@@ -28,37 +28,111 @@ class BeyazElmaProvider : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val response = app.get("$mainUrl/kanallar", headers = defaultHeaders)
+        val html = response.text
 
-        // DEBUG LOGLARI
-        println("BEYAZELMA_DEBUG: Status=${response.code}")
-        println("BEYAZELMA_DEBUG: HTML=${response.text.take(3000)}")
+        println("BEYAZELMA_DEBUG: Status=${response.code}, HTML size=${html.length}")
 
-        val document = response.document
-        val list = document.select("a.site-channel-row").mapNotNull { it.toSearchResult() }
+        // Next.js JSON verisinden kanalları çıkar
+        val channels = parseChannelsFromNextJs(html)
+        println("BEYAZELMA_DEBUG: Bulunan kanal sayısı=${channels.size}")
 
-        println("BEYAZELMA_DEBUG: Bulunan kanal sayısı=${list.size}")
-
-        return newHomePageResponse(request.name, list)
+        return newHomePageResponse(request.name, channels)
     }
 
-    private fun Element.toSearchResult(): SearchResponse? {
-        val href = this.attr("href")
-        val name = this.selectFirst("span.site-channel-row-name")?.text() ?: return null
-        val logoPath = this.selectFirst("span.site-channel-row-logo img")?.attr("src") ?: ""
+    private fun parseChannelsFromNextJs(html: String): List<SearchResponse> {
+        val results = mutableListOf<SearchResponse>()
 
-        if (href.isBlank()) return null
+        // Next.js RSC payload'larını bul: self.__next_f.push([1,"..."])
+        val regex = Regex("""self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)""")
 
-        val fullUrl = if (href.startsWith("http")) href else mainUrl.trimEnd('/') + href
-        val fullLogo = if (logoPath.startsWith("http")) logoPath else mainUrl.trimEnd('/') + logoPath
+        for (match in regex.findAll(html)) {
+            val rawChunk = match.groupValues[1]
+            // Escape karakterlerini çöz
+            val chunk = rawChunk
+                .replace("\\\"", "\"")
+                .replace("\\n", "\n")
+                .replace("\\\\", "\\")
 
-        return newLiveSearchResponse(name, fullUrl, TvType.Live) {
-            this.posterUrl = fullLogo
+            // "initialChannels":[ {...} ] ara
+            val idx = chunk.indexOf("\"initialChannels\":")
+            if (idx == -1) continue
+
+            // JSON array başlangıcını bul
+            val arrayStart = chunk.indexOf('[', idx)
+            if (arrayStart == -1) continue
+
+            // Dengeli parantez ile array sonunu bul
+            val arrayStr = extractBalanced(chunk, arrayStart, '[', ']') ?: continue
+
+            try {
+                val jsonArray = JSONArray(arrayStr)
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.optJSONObject(i) ?: continue
+                    val name = obj.optString("name")
+                    val slug = obj.optString("slug")
+                    val logo = obj.optString("logo")
+
+                    if (name.isBlank() || slug.isBlank()) continue
+
+                    val fullUrl = "$mainUrl/kanal/$slug"
+                    val fullLogo = if (logo.startsWith("http")) logo else "$mainUrl$logo"
+
+                    results.add(newLiveSearchResponse(name, fullUrl, TvType.Live) {
+                        this.posterUrl = fullLogo
+                    })
+                }
+                // İlk bulduğumuz yeterli
+                if (results.isNotEmpty()) break
+            } catch (e: Exception) {
+                println("BEYAZELMA_DEBUG: JSON parse hatası: ${e.message}")
+            }
         }
+
+        // Eğer RSC'den bulamazsak, normal HTML selector'ı dene (yedek)
+        if (results.isEmpty()) {
+            val doc = org.jsoup.Jsoup.parse(html)
+            doc.select("a.site-channel-row").forEach { el ->
+                val href = el.attr("href")
+                val name = el.selectFirst("span.site-channel-row-name")?.text() ?: return@forEach
+                val logoPath = el.selectFirst("span.site-channel-row-logo img")?.attr("src") ?: ""
+                if (href.isBlank()) return@forEach
+
+                val fullUrl = if (href.startsWith("http")) href else mainUrl.trimEnd('/') + href
+                val fullLogo = if (logoPath.startsWith("http")) logoPath else mainUrl.trimEnd('/') + logoPath
+
+                results.add(newLiveSearchResponse(name, fullUrl, TvType.Live) {
+                    this.posterUrl = fullLogo
+                })
+            }
+        }
+
+        return results
+    }
+
+    // Dengeli parantez çıkarıcı
+    private fun extractBalanced(s: String, start: Int, open: Char, close: Char): String? {
+        if (start >= s.length || s[start] != open) return null
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for (i in start until s.length) {
+            val c = s[i]
+            if (escaped) { escaped = false; continue }
+            if (c == '\\') { escaped = true; continue }
+            if (c == '"') { inString = !inString; continue }
+            if (inString) continue
+            if (c == open) depth++
+            else if (c == close) {
+                depth--
+                if (depth == 0) return s.substring(start, i + 1)
+            }
+        }
+        return null
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val document = app.get("$mainUrl/kanallar", headers = defaultHeaders).document
-        return document.select("a.site-channel-row").mapNotNull { it.toSearchResult() }
+        val response = app.get("$mainUrl/kanallar", headers = defaultHeaders)
+        return parseChannelsFromNextJs(response.text)
             .filter { it.name.contains(query, ignoreCase = true) }
     }
 
