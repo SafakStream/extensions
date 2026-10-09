@@ -13,13 +13,31 @@ class BeyazElmaProvider : MainAPI() {
     override var lang = "tr"
     override val supportedTypes = setOf(TvType.Live)
 
+    // Chrome UA — site tarayıcı kontrolü yapıyor
+    private val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+
+    private val defaultHeaders = mapOf(
+        "User-Agent" to userAgent,
+        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language" to "tr-TR,tr;q=0.9,en;q=0.8"
+    )
+
     override val mainPage = mainPageOf(
         "kanallar" to "Canlı Kanallar"
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("$mainUrl/kanallar").document
+        val response = app.get("$mainUrl/kanallar", headers = defaultHeaders)
+
+        // DEBUG LOGLARI
+        println("BEYAZELMA_DEBUG: Status=${response.code}")
+        println("BEYAZELMA_DEBUG: HTML=${response.text.take(3000)}")
+
+        val document = response.document
         val list = document.select("a.site-channel-row").mapNotNull { it.toSearchResult() }
+
+        println("BEYAZELMA_DEBUG: Bulunan kanal sayısı=${list.size}")
+
         return newHomePageResponse(request.name, list)
     }
 
@@ -39,7 +57,7 @@ class BeyazElmaProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val document = app.get("$mainUrl/kanallar").document
+        val document = app.get("$mainUrl/kanallar", headers = defaultHeaders).document
         return document.select("a.site-channel-row").mapNotNull { it.toSearchResult() }
             .filter { it.name.contains(query, ignoreCase = true) }
     }
@@ -60,7 +78,7 @@ class BeyazElmaProvider : MainAPI() {
     ): Boolean {
         return try {
             // 1. Kanal sayfasını çek
-            val document = app.get(data).document
+            val document = app.get(data, headers = defaultHeaders).document
 
             // 2. /api/embed linkini bul
             var embedUrl: String? = null
@@ -74,10 +92,14 @@ class BeyazElmaProvider : MainAPI() {
                 val match = Regex("""/api/embed\?u=[^"'\s&]+""").find(document.html())
                 if (match != null) embedUrl = mainUrl.trimEnd('/') + match.value
             }
-            if (embedUrl == null) return false
+            if (embedUrl == null) {
+                println("BEYAZELMA_DEBUG: /api/embed bulunamadı")
+                return false
+            }
+            println("BEYAZELMA_DEBUG: embedUrl=$embedUrl")
 
             // 3. Embed sayfasını çek
-            val embedDoc = app.get(embedUrl).document
+            val embedDoc = app.get(embedUrl, headers = defaultHeaders).document
             val html = embedDoc.html()
 
             // 4. Önce doğrudan /api/stream linkini ara
@@ -98,9 +120,13 @@ class BeyazElmaProvider : MainAPI() {
                 }
             }
 
-            if (streamUrl == null) return false
+            if (streamUrl == null) {
+                println("BEYAZELMA_DEBUG: streamUrl bulunamadı")
+                return false
+            }
+            println("BEYAZELMA_DEBUG: streamUrl=$streamUrl")
 
-            // 6. /api/stream?src=BASE64 ise, base64 decode et ve doğrudan m3u8 linkini al
+            // 6. /api/stream?src=BASE64 ise base64 decode et
             var finalUrl = streamUrl
             if (finalUrl.contains("/api/stream?src=")) {
                 val srcParam = finalUrl.substringAfter("src=").substringBefore("&")
@@ -111,8 +137,9 @@ class BeyazElmaProvider : MainAPI() {
                     // decode edilemezse /api/stream linkini kullan
                 }
             }
+            println("BEYAZELMA_DEBUG: finalUrl=$finalUrl")
 
-            // 7. Doğrudan m3u8 linkini gönder
+            // 7. m3u8 linkini gönder
             callback(newExtractorLink(
                 source = this.name,
                 name = this.name,
@@ -121,7 +148,7 @@ class BeyazElmaProvider : MainAPI() {
             ) {
                 this.referer = "https://beyazelma.xtrahut.xyz/"
                 this.headers = mapOf(
-                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+                    "User-Agent" to userAgent,
                     "Referer" to "https://beyazelma.xtrahut.xyz/",
                     "Origin" to "https://beyazelma.xtrahut.xyz"
                 )
