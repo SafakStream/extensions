@@ -1,11 +1,11 @@
 [
     {
         "iconUrl": "https://beyazelma78.com/favicon.png",
-        "jarFileSize": 28366,
-        "fileHash": "sha256-4a149bcb8ce4a5cd83d59eb17d29321192c9952ba206dd76f96fade643440e1b",
+        "jarFileSize": 33772,
+        "fileHash": "sha256-d0552c4dd24fed1bd235af49d77c284f3c6ef5d4cafbf5295ba6a941c6842e1f",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/SafakStream/extensions",
-        "fileSize": 8725,
+        "fileSize": 11656,
         "status": 1,
         "authors": [
             "SafakStream"
@@ -19,7 +19,7 @@
         "description": "BeyazElma canl\u0131 ma\u00e7 ve kanal yay\u0131nlar\u0131",
         "url": "https://raw.githubusercontent.com/SafakStream/extensions/builds/BeyazElmaProvider.cs3",
         "name": "BeyazElmaProvider",
-        "jarHash": "sha256-c50f88b6f4270593f1107f5f15026e0152e2cb1e3f33287247177d72933c6ee1"
+        "jarHash": "sha256-6e1f7efd9e955b7e6fdaea0433e3a5c74f154d1c931a33e5b8b1f640759d2b34"
     },
     {
         "iconUrl": "https://beyazelma78.com/favicon.png",
