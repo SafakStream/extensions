@@ -59,24 +59,69 @@ class BeyazElmaProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         return try {
-            // data = https://beyazelma78.com/kanal/atv
-            // slug'ı çıkar: /kanal/atv -> atv
-            val slug = data.substringAfterLast("/").substringBefore("?").substringBefore("#")
+            // 1. Kanal sayfasını çek
+            val document = app.get(data).document
 
-            if (slug.isBlank()) return false
+            // 2. /api/embed linkini bul
+            var embedUrl: String? = null
+            document.select("link[rel=preload]").forEach { link ->
+                val href = link.attr("href")
+                if (href.contains("/api/embed")) {
+                    embedUrl = if (href.startsWith("http")) href else mainUrl.trimEnd('/') + href
+                }
+            }
+            if (embedUrl == null) {
+                val match = Regex("""/api/embed\?u=[^"'\s&]+""").find(document.html())
+                if (match != null) embedUrl = mainUrl.trimEnd('/') + match.value
+            }
+            if (embedUrl == null) return false
 
-            // Doğrudan m3u8 linkini oluştur
-            val m3u8Url = "https://beyazelma.xtrahut.xyz/live/$slug/playlist.m3u8"
+            // 3. Embed sayfasını çek
+            val embedDoc = app.get(embedUrl).document
+            val html = embedDoc.html()
 
+            // 4. Önce doğrudan /api/stream linkini ara
+            var streamUrl: String? = null
+            val streamMatch = Regex("""["'](/api/stream\?src=[^"']+)["']""").find(html)
+            if (streamMatch != null) {
+                streamUrl = "https://beyazelma.xtrahut.xyz" + streamMatch.groupValues[1]
+            }
+
+            // 5. Bulamazsa şifreli bloğu çöz
+            if (streamUrl == null) {
+                val arrayMatch = Regex("""_if5=\[([0-9,]+)\]""").find(html)
+                if (arrayMatch != null) {
+                    val numbers = arrayMatch.groupValues[1].split(",").map { it.trim().toInt() }
+                    val decoded = numbers.map { ((it xor 47) - 88 + 256) % 256 }.map { it.toChar() }.joinToString("")
+                    val m3u8Match = Regex("""https?://[^\s"']+\.m3u8[^\s"']*""").find(decoded)
+                    if (m3u8Match != null) streamUrl = m3u8Match.value
+                }
+            }
+
+            if (streamUrl == null) return false
+
+            // 6. /api/stream?src=BASE64 ise, base64 decode et ve doğrudan m3u8 linkini al
+            var finalUrl = streamUrl
+            if (finalUrl.contains("/api/stream?src=")) {
+                val srcParam = finalUrl.substringAfter("src=").substringBefore("&")
+                try {
+                    val decodedSrc = String(java.util.Base64.getDecoder().decode(srcParam))
+                    finalUrl = decodedSrc
+                } catch (e: Exception) {
+                    // decode edilemezse /api/stream linkini kullan
+                }
+            }
+
+            // 7. Doğrudan m3u8 linkini gönder
             callback(newExtractorLink(
                 source = this.name,
                 name = this.name,
-                url = m3u8Url,
+                url = finalUrl,
                 type = ExtractorLinkType.M3U8
             ) {
                 this.referer = "https://beyazelma.xtrahut.xyz/"
                 this.headers = mapOf(
-                    "User-Agent" to "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
                     "Referer" to "https://beyazelma.xtrahut.xyz/",
                     "Origin" to "https://beyazelma.xtrahut.xyz"
                 )
