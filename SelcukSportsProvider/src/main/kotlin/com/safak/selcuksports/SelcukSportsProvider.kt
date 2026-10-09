@@ -3,6 +3,7 @@ package com.safak.selcuksports
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
 
 class SelcukSportsProvider : MainAPI() {
@@ -34,7 +35,7 @@ class SelcukSportsProvider : MainAPI() {
 
         if (href.isBlank()) return null
 
-        return newMovieSearchResponse("$title ($time)", href, TvType.Live) {
+        return newLiveSearchResponse("$title ($time)", href, TvType.Live) {
             this.posterUrl = ""
         }
     }
@@ -46,9 +47,11 @@ class SelcukSportsProvider : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        return newMovieLoadResponse("SelcukSports Maç", url, TvType.Live, url) {
-            this.posterUrl = ""
-        }
+        return newLiveStreamLoadResponse(
+            name = "SelcukSports Maç",
+            url = url,
+            dataUrl = url
+        )
     }
 
     override suspend fun loadLinks(
@@ -57,17 +60,23 @@ class SelcukSportsProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        callback.invoke(
-            newExtractorLink(
+        return try {
+            callback(newExtractorLink(
                 source = this.name,
                 name = this.name,
                 url = data,
-                type = ExtractorLinkType.VIDEO
+                type = ExtractorLinkType.M3U8
             ) {
                 this.referer = mainUrl
-                this.quality = 720
-            }
-        )
-        return true
+                this.headers = mapOf(
+                    "User-Agent" to "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
+                    "Referer" to mainUrl
+                )
+            })
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 }
