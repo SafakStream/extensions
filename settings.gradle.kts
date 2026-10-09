@@ -4,3 +4,4 @@ rootProject.name = "CloudstreamPlugins"
 include("DailymotionProvider")
 include("SinewixProvider")
 include("InatBoxProvider")
+include("SelcukSportsProvider")   // ← YENİ EKLENDİ
