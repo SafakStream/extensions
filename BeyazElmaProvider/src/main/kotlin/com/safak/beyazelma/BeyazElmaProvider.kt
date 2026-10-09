@@ -1,14 +1,11 @@
 package com.safak.beyazelma
 
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import kotlinx.coroutines.lazy
-import okhttp3.Interceptor
-import org.json.JSONArray
 import org.json.JSONObject
+import org.jsoup.nodes.Element
 
 class BeyazElmaProvider : MainAPI() {
     override var mainUrl = "https://beyazelma78.com/"
@@ -19,9 +16,6 @@ class BeyazElmaProvider : MainAPI() {
 
     // Chrome Android UA (cs3'teki ile aynı)
     private val userAgent = "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.82 Mobile Safari/537.36"
-
-    // CloudflareKiller — işte sır bu!
-    private val cfKiller: CloudflareKiller by lazy { CloudflareKiller() }
 
     private val defaultHeaders = mapOf(
         "User-Agent" to userAgent,
@@ -34,18 +28,13 @@ class BeyazElmaProvider : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        // CloudflareKiller ile istek at
-        val response = app.get(
-            "$mainUrl/kanallar",
-            headers = defaultHeaders,
-            interceptor = cfKiller
-        )
+        val response = app.get("$mainUrl/kanallar", headers = defaultHeaders)
         val document = response.document
         val list = document.select("a.site-channel-row").mapNotNull { it.toSearchResult() }
         return newHomePageResponse(request.name, list)
     }
 
-    private fun org.jsoup.nodes.Element.toSearchResult(): SearchResponse? {
+    private fun Element.toSearchResult(): SearchResponse? {
         val href = this.attr("href")
         val name = this.selectFirst("span.site-channel-row-name")?.text() ?: return null
         val logoPath = this.selectFirst("span.site-channel-row-logo img")?.attr("src") ?: ""
@@ -61,11 +50,7 @@ class BeyazElmaProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val response = app.get(
-            "$mainUrl/kanallar",
-            headers = defaultHeaders,
-            interceptor = cfKiller
-        )
+        val response = app.get("$mainUrl/kanallar", headers = defaultHeaders)
         return response.document.select("a.site-channel-row")
             .mapNotNull { it.toSearchResult() }
             .filter { it.name.contains(query, ignoreCase = true) }
@@ -86,10 +71,8 @@ class BeyazElmaProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         return try {
-            // 1. Kanal sayfasını çek (CloudflareKiller ile)
-            val document = app.get(data, headers = defaultHeaders, interceptor = cfKiller).document
+            val document = app.get(data, headers = defaultHeaders).document
 
-            // 2. /api/embed linkini bul
             var embedUrl: String? = null
             document.select("link[rel=preload]").forEach { link ->
                 val href = link.attr("href")
@@ -103,34 +86,29 @@ class BeyazElmaProvider : MainAPI() {
             }
             if (embedUrl == null) return false
 
-            // 3. Embed sayfasını çek
-            val embedDoc = app.get(embedUrl, headers = defaultHeaders, interceptor = cfKiller).document
+            val embedDoc = app.get(embedUrl, headers = defaultHeaders).document
             val html = embedDoc.html()
 
-            // 4. StreamPlayer.mount regex'i ile slug'ı al
+            // StreamPlayer.mount regex'i ile slug'ı al
             val slugMatch = Regex("""StreamPlayer\.mount\([^,]+,\s*\{[^}]*["']slug["']\s*:\s*["']([^"']+)["']""").find(html)
             val slug = slugMatch?.groupValues?.get(1)
 
-            if (slug != null) {
-                // 5. PlayOrigin'u bul
-                val embedOrigin = try {
-                    java.net.URI(embedUrl).let { "${it.scheme}://${it.authority}" }
-                } catch (e: Exception) {
-                    "https://embed.beyazelma78.com"
-                }
+            // PlayOrigin'u bul
+            val embedOrigin = try {
+                java.net.URI(embedUrl).let { "${it.scheme}://${it.authority}" }
+            } catch (e: Exception) {
+                "https://embed.beyazelma78.com"
+            }
 
-                // 6. PlayUrl'e istek at
+            if (slug != null) {
                 val playUrl = "$embedOrigin/api/play/$slug"
                 val playResponse = app.get(
                     playUrl,
-                    headers = defaultHeaders + mapOf("Referer" to "$embedOrigin/", "Origin" to embedOrigin),
-                    interceptor = cfKiller
+                    headers = defaultHeaders + mapOf("Referer" to "$embedOrigin/", "Origin" to embedOrigin)
                 )
 
                 if (playResponse.code == 200) {
                     val playJson = JSONObject(playResponse.text)
-
-                    // 7. Primary m3u8 linkini al
                     val primary = playJson.optString("primary", "")
                     if (primary.isNotBlank()) {
                         val primaryWithM3u8 = when {
@@ -153,7 +131,6 @@ class BeyazElmaProvider : MainAPI() {
                         })
                     }
 
-                    // 8. Fallbacks listesini al
                     val fallbacks = playJson.optJSONArray("fallbacks")
                     if (fallbacks != null) {
                         for (i in 0 until fallbacks.length()) {
@@ -180,16 +157,15 @@ class BeyazElmaProvider : MainAPI() {
                             }
                         }
                     }
-
                     return true
                 }
             }
 
-            // 9. Alternatif: /api/stream?src=BASE64 linkini ara
+            // Alternatif: /api/stream?src=BASE64
             var streamUrl: String? = null
             val streamMatch = Regex("""["'](/api/stream\?src=[^"']+)["']""").find(html)
             if (streamMatch != null) {
-                streamUrl = "https://beyazelma.xtrahut.xyz" + streamMatch.groupValues[1]
+                streamUrl = "$embedOrigin" + streamMatch.groupValues[1]
             }
 
             if (streamUrl != null) {
