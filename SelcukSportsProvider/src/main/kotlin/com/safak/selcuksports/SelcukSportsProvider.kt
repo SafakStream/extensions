@@ -21,6 +21,9 @@ class SelcukSportsProvider : MainAPI() {
         "tab5" to "7/24 TV"
     )
 
+    // Video sunucusunun base URL'si (kaynak koddan alındı)
+    private val streamBaseUrl = "https://dga1op10s1u3lea.82250d06d39d38.click/live/"
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val document = app.get(mainUrl).document
         val list = document.select("div#${request.data} ul li").mapNotNull { it.toSearchResult() }
@@ -61,16 +64,28 @@ class SelcukSportsProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         return try {
+            // data-url'den id parametresini çıkar
+            // Örnek: https://main.uxsyplayer6859599e6c.click/index.php?id=selcukbeinsports1
+            val id = data.substringAfter("id=", "").substringBefore("&").substringBefore("#")
+
+            if (id.isBlank()) {
+                return false
+            }
+
+            // m3u8 linkini oluştur
+            val m3u8Url = "$streamBaseUrl$id/playlist.m3u8"
+
             callback(newExtractorLink(
                 source = this.name,
                 name = this.name,
-                url = data,
+                url = m3u8Url,
                 type = ExtractorLinkType.M3U8
             ) {
-                this.referer = mainUrl
+                this.referer = "https://main.uxsyplayer6859599e6c.click/"
                 this.headers = mapOf(
                     "User-Agent" to "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
-                    "Referer" to mainUrl
+                    "Referer" to "https://main.uxsyplayer6859599e6c.click/",
+                    "Origin" to "https://main.uxsyplayer6859599e6c.click"
                 )
             })
             true
