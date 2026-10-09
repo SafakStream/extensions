@@ -31,17 +31,30 @@ class SelcukSportsProvider : MainAPI() {
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
-        val aTag = this.selectFirst("a") ?: return null
-        val title = this.selectFirst("div.name")?.text() ?: return null
-        val time = this.selectFirst("time.time")?.text() ?: ""
-        val href = aTag.attr("data-url")
+    val aTag = this.selectFirst("a") ?: return null
+    val title = this.selectFirst("div.name")?.text() ?: return null
+    val time = this.selectFirst("time.time")?.text() ?: ""
+    val href = aTag.attr("data-url")
 
-        if (href.isBlank()) return null
+    if (href.isBlank()) return null
 
-        return newLiveSearchResponse("$title ($time)", href, TvType.Live) {
-            this.posterUrl = ""
-        }
+    // data-url içindeki #poster= parametresini çıkar
+    val posterUrl = try {
+        val hashPart = href.substringAfter("#", "")
+        if (hashPart.isNotBlank()) {
+            val posterParam = hashPart.substringAfter("poster=", "").substringBefore("&")
+            if (posterParam.isNotBlank()) {
+                java.net.URLDecoder.decode(posterParam, "UTF-8")
+            } else ""
+        } else ""
+    } catch (e: Exception) {
+        ""
     }
+
+    return newLiveSearchResponse("$title ($time)", href, TvType.Live) {
+        this.posterUrl = posterUrl
+    }
+}
 
     override suspend fun search(query: String): List<SearchResponse> {
         val document = app.get(mainUrl).document
