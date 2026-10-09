@@ -1,10 +1,14 @@
 package com.safak.beyazelma
 
 import com.lagradost.cloudstream3.*
+import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import okhttp3.Interceptor
+import okhttp3.Response
 import org.json.JSONObject
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
 class BeyazElmaProvider : MainAPI() {
@@ -17,6 +21,10 @@ class BeyazElmaProvider : MainAPI() {
     // Chrome Android UA (cs3'teki ile aynı)
     private val userAgent = "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.82 Mobile Safari/537.36"
 
+    // CloudflareKiller ve Interceptor
+    private val cloudflareKiller by lazy { CloudflareKiller() }
+    private val interceptor by lazy { CloudflareInterceptor(cloudflareKiller) }
+
     private val defaultHeaders = mapOf(
         "User-Agent" to userAgent,
         "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -28,7 +36,7 @@ class BeyazElmaProvider : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val response = app.get("$mainUrl/kanallar", headers = defaultHeaders)
+        val response = app.get("$mainUrl/kanallar", headers = defaultHeaders, interceptor = interceptor)
         val document = response.document
         val list = document.select("a.site-channel-row").mapNotNull { it.toSearchResult() }
         return newHomePageResponse(request.name, list)
@@ -50,7 +58,7 @@ class BeyazElmaProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val response = app.get("$mainUrl/kanallar", headers = defaultHeaders)
+        val response = app.get("$mainUrl/kanallar", headers = defaultHeaders, interceptor = interceptor)
         return response.document.select("a.site-channel-row")
             .mapNotNull { it.toSearchResult() }
             .filter { it.name.contains(query, ignoreCase = true) }
@@ -71,7 +79,7 @@ class BeyazElmaProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         return try {
-            val document = app.get(data, headers = defaultHeaders).document
+            val document = app.get(data, headers = defaultHeaders, interceptor = interceptor).document
 
             var embedUrl: String? = null
             document.select("link[rel=preload]").forEach { link ->
@@ -86,7 +94,7 @@ class BeyazElmaProvider : MainAPI() {
             }
             if (embedUrl == null) return false
 
-            val embedDoc = app.get(embedUrl, headers = defaultHeaders).document
+            val embedDoc = app.get(embedUrl, headers = defaultHeaders, interceptor = interceptor).document
             val html = embedDoc.html()
 
             // StreamPlayer.mount regex'i ile slug'ı al
@@ -104,7 +112,8 @@ class BeyazElmaProvider : MainAPI() {
                 val playUrl = "$embedOrigin/api/play/$slug"
                 val playResponse = app.get(
                     playUrl,
-                    headers = defaultHeaders + mapOf("Referer" to "$embedOrigin/", "Origin" to embedOrigin)
+                    headers = defaultHeaders + mapOf("Referer" to "$embedOrigin/", "Origin" to embedOrigin),
+                    interceptor = interceptor
                 )
 
                 if (playResponse.code == 200) {
@@ -190,5 +199,18 @@ class BeyazElmaProvider : MainAPI() {
             e.printStackTrace()
             false
         }
+    }
+}
+
+// CloudflareInterceptor sınıfı (dosyanın sonuna ekle)
+class CloudflareInterceptor(private val cloudflareKiller: CloudflareKiller) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        val response = chain.proceed(request)
+        val doc = Jsoup.parse(response.peekBody(1024 * 1024).string())
+        if (doc.select("title").text() == "Just a moment...") {
+            return cloudflareKiller.intercept(chain)
+        }
+        return response
     }
 }
