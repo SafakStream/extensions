@@ -128,47 +128,46 @@ class BeyazElmaProvider : MainAPI() {
     }
 
     private suspend fun extractAndSend(decoded: String, callback: (ExtractorLink) -> Unit): Boolean {
-        // m3u8 linkini ara
-        val m3u8Match = Regex("""https?://[^\s"']+\.m3u8[^\s"']*""").find(decoded)
-        if (m3u8Match == null) {
-            // Alternatif: file: "..." içinde ara
-            val fileMatch = Regex("""file:\s*["']([^"']+)["']""").find(decoded)
-            if (fileMatch == null) return false
-            val url = fileMatch.groupValues[1]
-            sendLink(url, callback)
-            return true
-        }
-
-        var m3u8Url = m3u8Match.value
-
-        // Eğer link /api/stream?src=... şeklindeyse, src parametresini base64 decode et
-        if (m3u8Url.contains("/api/stream?src=")) {
-            val srcParam = m3u8Url.substringAfter("src=").substringBefore("&")
-            try {
-                val decodedSrc = String(android.util.Base64.decode(srcParam, android.util.Base64.DEFAULT))
-                m3u8Url = decodedSrc
-            } catch (e: Exception) {
-                // base64 değilse olduğu gibi bırak
-            }
-        }
-
-        sendLink(m3u8Url, callback)
+    // m3u8 linkini ara
+    val m3u8Match = Regex("""https?://[^\s"']+\.m3u8[^\s"']*""").find(decoded)
+    if (m3u8Match == null) {
+        // Alternatif: file: "..." içinde ara
+        val fileMatch = Regex("""file:\s*["']([^"']+)["']""").find(decoded)
+        if (fileMatch == null) return false
+        val url = fileMatch.groupValues[1]
+        sendLink(url, callback)
         return true
     }
 
-    private fun sendLink(url: String, callback: (ExtractorLink) -> Unit) {
-        callback(newExtractorLink(
-            source = this.name,
-            name = this.name,
-            url = url,
-            type = ExtractorLinkType.M3U8
-        ) {
-            this.referer = "https://beyazelma.xtrahut.xyz/"
-            this.headers = mapOf(
-                "User-Agent" to "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
-                "Referer" to "https://beyazelma.xtrahut.xyz/",
-                "Origin" to "https://beyazelma.xtrahut.xyz"
-            )
-        })
+    var m3u8Url = m3u8Match.value
+
+    // Eğer link /api/stream?src=... şeklindeyse, src parametresini base64 decode et
+    if (m3u8Url.contains("/api/stream?src=")) {
+        val srcParam = m3u8Url.substringAfter("src=").substringBefore("&")
+        try {
+            val decodedSrc = String(android.util.Base64.decode(srcParam, android.util.Base64.DEFAULT))
+            m3u8Url = decodedSrc
+        } catch (e: Exception) {
+            // base64 değilse olduğu gibi bırak
+        }
     }
+
+    sendLink(m3u8Url, callback)
+    return true
+}
+
+private suspend fun sendLink(url: String, callback: (ExtractorLink) -> Unit) {
+    callback(newExtractorLink(
+        source = this.name,
+        name = this.name,
+        url = url,
+        type = ExtractorLinkType.M3U8
+    ) {
+        this.referer = "https://beyazelma.xtrahut.xyz/"
+        this.headers = mapOf(
+            "User-Agent" to "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36",
+            "Referer" to "https://beyazelma.xtrahut.xyz/",
+            "Origin" to "https://beyazelma.xtrahut.xyz"
+        )
+    })
 }
